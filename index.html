@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Gestión de proyectos con subproyectos, Gantt, tareas y stakeholders" />
+    <title>Project Hub — Gestión de proyectos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">PH</div>
+          <div>
+            <h1>Project Hub</h1>
+            <span>Proyectos y tareas</span>
+          </div>
+        </div>
+        <nav class="nav" id="main-nav">
+          <button type="button" data-view="projects" class="active">Proyectos</button>
+          <button type="button" data-view="gantt">Gantt</button>
+          <button type="button" data-view="stats">Estadísticas</button>
+          <button type="button" data-view="people">Responsables</button>
+          <button type="button" data-view="vendors">Vendors</button>
+          <button type="button" data-view="stakeholders">Stakeholders</button>
+        </nav>
+        <p class="footer-hint">
+          Los datos se guardan en archivos JSON bajo <code>data/</code> (vía <code>server.py</code> o Docker). Exporta desde Estadísticas para un backup portátil.
+        </p>
+      </aside>
+      <div class="main">
+        <header class="topbar">
+          <h2 id="view-title">Proyectos</h2>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-export" title="Exportar JSON">
+            Exportar datos
+          </button>
+        </header>
+        <main class="content" id="app-root">
+          <div class="card boot-panel" id="boot-hint">
+            <h3 class="boot-title">Cargando aplicación…</h3>
+            <p class="muted boot-text">
+              Si esta pantalla no desaparece en unos segundos, casi seguro estás abriendo el HTML con
+              <strong>file://</strong> (doble clic en el archivo). Los navegadores bloquean el script y solo verías el
+              menú lateral.
+            </p>
+        <p class="muted boot-text">
+          En local, en la carpeta del proyecto ejecuta
+          <code class="boot-code">python3 server.py</code>
+          y abre <code class="boot-code">http://localhost:8080/</code>
+        </p>
+        <p class="muted boot-text">
+          Con Docker: <code class="boot-code">docker compose up --build</code>
+        </p>
+          </div>
+        </main>
+      </div>
+    </div>
+    <input type="file" id="import-file" accept="application/json" class="sr-only" aria-hidden="true" />
+    <noscript>
+      <div class="noscript-banner">Activa JavaScript para usar Project Hub.</div>
+    </noscript>
+    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="js/app.js" defer></script>
+  </body>
+</html>
