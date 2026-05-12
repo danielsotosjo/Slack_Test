@@ -49,17 +49,32 @@ a:hover {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 1fr;
   min-height: 100dvh;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr auto;
+  grid-template-areas:
+    "workspace"
+    "navrail";
+}
+
+.main {
+  grid-area: workspace;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
 }
 
 @media (min-width: 900px) {
   .app-shell {
     grid-template-columns: var(--sidebar-w) 1fr;
+    grid-template-rows: 1fr;
+    grid-template-areas: "navrail workspace";
   }
 }
 
 .sidebar {
+  grid-area: navrail;
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
   padding: 1rem 1rem 0.75rem;
@@ -162,12 +177,6 @@ a:hover {
   border-color: rgba(61, 156, 240, 0.35);
 }
 
-.main {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
 .topbar {
   height: var(--header-h);
   padding: 0 1rem;
@@ -195,6 +204,52 @@ a:hover {
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
+  min-height: min(70dvh, 560px);
+}
+
+#app-root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.boot-panel {
+  max-width: 36rem;
+  margin: 1rem auto;
+}
+
+.boot-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+}
+
+.boot-text {
+  margin: 0 0 0.65rem;
+  line-height: 1.55;
+}
+
+.boot-code {
+  display: inline-block;
+  margin-top: 0.2rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+
+.noscript-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.75rem 1rem;
+  background: #7c2d12;
+  color: #fff;
+  text-align: center;
+  font-size: 0.9rem;
+  z-index: 9999;
 }
 
 @media (min-width: 640px) {
@@ -448,6 +503,10 @@ tr:hover td {
 .split-layout {
   display: grid;
   gap: 1rem;
+}
+
+.split-layout > .card {
+  min-height: 12rem;
 }
 
 @media (min-width: 900px) {

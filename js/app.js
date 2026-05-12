@@ -239,7 +239,7 @@ function renderProjects() {
     </div>
     <div class="split-layout">
       <div class="card">
-        <h3>Árbol de proyectos</h3>
+        <h3>Lista de proyectos</h3>
         ${state.projects.filter((x) => !x.parentId).length === 0 ? `<div class="empty-state"><strong>Sin proyectos</strong>Crea un proyecto raíz para empezar.</div>` : renderProjectTree(null)}
       </div>
       <div class="card">
