@@ -1,0 +1,8 @@
+services:
+  project-hub:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persistir la base JSON en el host
+      - ./data:/app/data

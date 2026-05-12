@@ -1,9 +1,6 @@
 /**
- * Project Hub — SPA sin build step.
- * Persistencia: localStorage (clave PM_HUB_V1).
+ * Project Hub — datos en archivos JSON (servidor local vía /api/state).
  */
-
-const STORAGE_KEY = "PM_HUB_V1";
 
 function uid() {
   return crypto.randomUUID?.() ?? `id_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -81,25 +78,18 @@ function defaultState() {
   };
 }
 
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultState();
-    const data = JSON.parse(raw);
-    if (!Array.isArray(data.projects) || !Array.isArray(data.tasks)) return defaultState();
-    const merged = {
-      version: data.version ?? 1,
-      projects: data.projects,
-      tasks: data.tasks,
-      assignees: Array.isArray(data.assignees) ? data.assignees : [],
-      vendors: Array.isArray(data.vendors) ? data.vendors : [],
-      stakeholders: Array.isArray(data.stakeholders) ? data.stakeholders : [],
-      ui: { ...defaultUI(), ...(data.ui || {}) },
-    };
-    return normalizeState(merged);
-  } catch {
-    return defaultState();
-  }
+function parseImportedState(data) {
+  if (!Array.isArray(data.projects) || !Array.isArray(data.tasks)) throw new Error("invalid");
+  const merged = {
+    version: data.version ?? 1,
+    projects: data.projects,
+    tasks: data.tasks,
+    assignees: Array.isArray(data.assignees) ? data.assignees : [],
+    vendors: Array.isArray(data.vendors) ? data.vendors : [],
+    stakeholders: Array.isArray(data.stakeholders) ? data.stakeholders : [],
+    ui: { ...defaultUI(), ...(data.ui || {}) },
+  };
+  return normalizeState(merged);
 }
 
 function normalizeState(s) {
@@ -114,12 +104,43 @@ function normalizeState(s) {
   return s;
 }
 
-function saveState(state) {
-  const { version, projects, tasks, assignees, vendors, stakeholders, ui } = state;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ version, projects, tasks, assignees, vendors, stakeholders, ui }));
+const SAVE_DEBOUNCE_MS = 350;
+let persistTimer = null;
+let persistMode = "api";
+
+function payloadFromState(s) {
+  const { version, projects, tasks, assignees, vendors, stakeholders, ui } = s;
+  return { version: version ?? 1, projects, tasks, assignees, vendors, stakeholders, ui };
 }
 
-let state = loadState();
+async function persistToServer() {
+  if (persistMode !== "api" || !state) return;
+  const res = await fetch("/api/state", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payloadFromState(state)),
+  });
+  if (!res.ok && res.status !== 204) {
+    console.error("No se pudo guardar en el servidor", res.status);
+  }
+}
+
+async function persistImmediate() {
+  clearTimeout(persistTimer);
+  persistTimer = null;
+  await persistToServer();
+}
+
+function saveState() {
+  if (persistMode !== "api") return;
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    persistToServer().catch((e) => console.error(e));
+  }, SAVE_DEBOUNCE_MS);
+}
+
+let state = null;
 let ganttInstance = null;
 let chartInstance = null;
 
@@ -219,7 +240,7 @@ function setView(view) {
     stakeholders: "Stakeholders",
   };
   document.getElementById("view-title").textContent = titles[view] || view;
-  saveState(state);
+  saveState();
   render();
 }
 
@@ -418,6 +439,7 @@ function renderStakeholders() {
 }
 
 function render() {
+  if (!state) return;
   destroyGantt();
   destroyChart();
   const root = document.getElementById("app-root");
@@ -450,14 +472,14 @@ function bindViewHandlers() {
     document.querySelectorAll(".tree-node").forEach((node) => {
       node.addEventListener("click", () => {
         state.ui.selectedProjectId = node.dataset.projectId;
-        saveState(state);
+        saveState();
         render();
       });
       node.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           state.ui.selectedProjectId = node.dataset.projectId;
-          saveState(state);
+          saveState();
           render();
         }
       });
@@ -474,12 +496,12 @@ function bindViewHandlers() {
   if (v === "gantt") {
     document.getElementById("gantt-project")?.addEventListener("change", (e) => {
       state.ui.ganttProjectId = e.target.value;
-      saveState(state);
+      saveState();
       render();
     });
     document.getElementById("gantt-children")?.addEventListener("change", (e) => {
       state.ui.ganttIncludeChildren = e.target.checked;
-      saveState(state);
+      saveState();
       render();
     });
   }
@@ -550,13 +572,13 @@ function initGanttAfterPaint() {
         t.start = formatDate(start);
         t.end = formatDate(end);
         if (t.end <= t.start) t.end = addDaysISO(t.start, 1);
-        saveState(state);
+        saveState();
       },
       on_progress_change: (task, progress) => {
         const t = state.tasks.find((x) => x.id === task.id);
         if (!t) return;
         t.progress = Math.round(progress);
-        saveState(state);
+        saveState();
       },
     });
   });
@@ -628,7 +650,7 @@ function openProjectModal(parentId) {
     const id = uid();
     state.projects.push({ id, name, notes: wrap.querySelector("#f-p-notes").value.trim(), parentId: isSub ? parentId : null });
     state.ui.selectedProjectId = id;
-    saveState(state);
+    saveState();
     close();
     render();
   };
@@ -679,14 +701,14 @@ function openTaskModal(taskId) {
     } else {
       state.tasks.push({ id: uid(), projectId, ...row });
     }
-    saveState(state);
+    saveState();
     close();
     render();
   };
   wrap.querySelector("[data-del]")?.addEventListener("click", () => {
     if (!existing || !confirm("¿Eliminar esta tarea?")) return;
     state.tasks = state.tasks.filter((t) => t.id !== existing.id);
-    saveState(state);
+    saveState();
     close();
     render();
   });
@@ -714,7 +736,7 @@ function openAssigneeModal(id) {
     };
     if (ex) Object.assign(ex, row);
     else state.assignees.push({ id: uid(), ...row });
-    saveState(state);
+    saveState();
     close();
     render();
   };
@@ -726,7 +748,7 @@ function deleteAssignee(id) {
   state.tasks.forEach((t) => {
     if (t.assigneeId === id) t.assigneeId = null;
   });
-  saveState(state);
+  saveState();
   render();
 }
 
@@ -754,7 +776,7 @@ function openVendorModal(id) {
     };
     if (ex) Object.assign(ex, row);
     else state.vendors.push({ id: uid(), ...row });
-    saveState(state);
+    saveState();
     close();
     render();
   };
@@ -763,7 +785,7 @@ function openVendorModal(id) {
 function deleteVendor(id) {
   if (!confirm("¿Eliminar este vendor?")) return;
   state.vendors = state.vendors.filter((v) => v.id !== id);
-  saveState(state);
+  saveState();
   render();
 }
 
@@ -799,7 +821,7 @@ function openStakeholderModal(id) {
     };
     if (ex) Object.assign(ex, row);
     else state.stakeholders.push({ id: uid(), ...row });
-    saveState(state);
+    saveState();
     close();
     render();
   };
@@ -808,7 +830,7 @@ function openStakeholderModal(id) {
 function deleteStakeholder(id) {
   if (!confirm("¿Eliminar este stakeholder?")) return;
   state.stakeholders = state.stakeholders.filter((s) => s.id !== id);
-  saveState(state);
+  saveState();
   render();
 }
 
@@ -830,12 +852,59 @@ function downloadBackup() {
   URL.revokeObjectURL(a.href);
 }
 
-document.getElementById("import-file").addEventListener("change", (e) => {
+function showBootError(html) {
+  const root = document.getElementById("app-root");
+  if (root) root.innerHTML = html;
+}
+
+async function init() {
+  try {
+    const res = await fetch("/api/state", { headers: { Accept: "application/json" } });
+    if (res.status === 404) {
+      state = defaultState();
+      await persistImmediate();
+    } else if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    } else {
+      state = parseImportedState(await res.json());
+    }
+    persistMode = "api";
+  } catch (e) {
+    console.error(e);
+    showBootError(`<div class="card boot-panel">
+      <h3 class="boot-title">No hay conexión con el servidor</h3>
+      <p class="muted boot-text">La base de datos son archivos JSON en la carpeta <code>data/</code>, servidos por <code>server.py</code>. En la raíz del proyecto ejecuta:</p>
+      <p><code class="boot-code">python3 server.py</code></p>
+      <p class="muted boot-text">O con Docker:</p>
+      <p><code class="boot-code">docker compose up --build</code></p>
+      <p class="muted boot-text" style="margin-top:1rem">Después abre <code class="boot-code">http://localhost:8080/</code> (no uses doble clic en <code>index.html</code>).</p>
+    </div>`);
+    return;
+  }
+
+  window.addEventListener("beforeunload", () => {
+    if (persistMode !== "api" || !state) return;
+    clearTimeout(persistTimer);
+    const body = JSON.stringify(payloadFromState(state));
+    fetch("/api/state", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+    }).catch(() => {});
+  });
+
+  document.getElementById("import-file").addEventListener("change", onImportFile);
+
+  render();
+}
+
+function onImportFile(e) {
   const file = e.target.files?.[0];
   e.target.value = "";
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const data = JSON.parse(reader.result);
       if (!data.projects || !data.tasks) throw new Error("Formato inválido");
@@ -849,13 +918,13 @@ document.getElementById("import-file").addEventListener("change", (e) => {
         stakeholders: data.stakeholders || [],
         ui: { ...defaultUI(), ...(data.ui || {}) },
       });
-      saveState(state);
+      await persistImmediate();
       setView(state.ui.view || "projects");
     } catch {
       alert("No se pudo importar el archivo.");
     }
   };
   reader.readAsText(file);
-});
+}
 
-render();
+init();

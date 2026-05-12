@@ -33,7 +33,7 @@
           <button type="button" data-view="stakeholders">Stakeholders</button>
         </nav>
         <p class="footer-hint">
-          Los datos se guardan en este navegador (localStorage). Exporta desde Estadísticas para respaldar.
+          Los datos se guardan en archivos JSON bajo <code>data/</code> (vía <code>server.py</code> o Docker). Exporta desde Estadísticas para un backup portátil.
         </p>
       </aside>
       <div class="main">
@@ -51,11 +51,14 @@
               <strong>file://</strong> (doble clic en el archivo). Los navegadores bloquean el script y solo verías el
               menú lateral.
             </p>
-            <p class="muted boot-text">
-              En local, en la carpeta donde está <code>index.html</code>, ejecuta:
-              <code class="boot-code">python3 -m http.server 8080</code>
-              y entra en <code class="boot-code">http://localhost:8080/</code>
-            </p>
+        <p class="muted boot-text">
+          En local, en la carpeta del proyecto ejecuta
+          <code class="boot-code">python3 server.py</code>
+          y abre <code class="boot-code">http://localhost:8080/</code>
+        </p>
+        <p class="muted boot-text">
+          Con Docker: <code class="boot-code">docker compose up --build</code>
+        </p>
           </div>
         </main>
       </div>
